@@ -51,8 +51,13 @@ class AbyssJsCodeExtractor {
             return null
         }
 
-        val objectAssignmentPattern = extractObjectAssignmentPattern(jsResponse)
-//        println(objectAssignmentPattern)
+        val functionVariableNamesPair = extractVarNamesFromFunction(jsResponse)
+        if (functionVariableNamesPair == null || functionVariableNamesPair.toList().isEmpty()) {
+            Logger.error("failed to retrieve variable pair from the function")
+            return null
+        }
+
+        val objectAssignmentPattern = extractObjectAssignmentPattern(jsResponse, functionVariableNamesPair)
         if (objectAssignmentPattern == null) {
             Logger.error("Object assignment pattern not found")
             return null
@@ -98,12 +103,13 @@ class AbyssJsCodeExtractor {
     private fun extractCommaVariableName(jsCode: String): String? =
         COMMA_VARIABLE_ASSIGNMENT_REGEX.find(jsCode)?.groupValues?.get(1)
 
-    private fun extractObjectAssignmentPattern(jsCode: String): String? {
+    private fun extractObjectAssignmentPattern(jsCode: String, varPair: Pair<String, String>): String? {
         val startIndex = jsCode.indexOf("JSON")
         val endIndex = jsCode.lastIndexOf("...")
 
         val relevantSection = jsCode.substring(startIndex, endIndex)
         return OBJECT_ASSIGNMENT_PATTERN_REGEX.find(relevantSection)?.value
+            ?.replace("${varPair.first}(", "${varPair.second}(", false)
             ?.plus("sourcesEncoded: sourcesEncoded}")
     }
 
@@ -156,6 +162,17 @@ class AbyssJsCodeExtractor {
             .map { it.value }
             .toList()
     }
+
+    private fun extractVarNamesFromFunction(code: String): Pair<String, String>? {
+        val regex = Regex(
+            """function\s+[A-Za-z_$][\w$]*\s*\(\s*\)\s*\{\s*var\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*;\s*try""",
+            setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE)
+        )
+
+        val match = regex.find(code)
+        return match?.destructured?.let { (lhs, rhs) -> lhs to rhs }
+    }
+
 }
 
 

@@ -194,10 +194,10 @@ class VideoDownloader: KoinComponent {
     }
 
 
-    fun extractEncryptedVideoMetaData(html: String): String? {
+    private fun extractEncryptedVideoMetaData(html: String): String? {
        val jsCode = Jsoup.parse(html)
            .select("script")
-           .find { it.html().contains("subtitle") }
+           .find { it.html().contains("atob") }
            ?.html()
 
         if (jsCode == null) {
