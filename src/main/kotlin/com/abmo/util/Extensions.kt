@@ -93,6 +93,12 @@ fun String.replaceLast(oldValue: String, newValue: String): String {
     }
 }
 
+fun String.between(start: String, end: String): String {
+    val startIndex = this.indexOf(start)
+    val endIndex = this.lastIndexOf(end)
+    return this.substring(startIndex, endIndex)
+}
+
 fun isValidPath(filePath: String?): Boolean {
     if (filePath.isNullOrBlank()) return false
 
