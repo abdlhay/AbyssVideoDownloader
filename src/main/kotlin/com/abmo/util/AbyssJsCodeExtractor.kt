@@ -23,17 +23,15 @@ class AbyssJsCodeExtractor {
             RegexOption.DOT_MATCHES_ALL
         )
 
-        private val COMPLEX_CONCATENATION_REGEX = Regex(
-            """([A-Za-z])\(0x[a-fA-F0-9]+\)(?:\s*\+\s*(?:\([A-Za-z]\(0x[a-fA-F0-9]+\)(?:\s*\+\s*[A-Za-z]\(0x[a-fA-F0-9]+\))*(?:\s*\+\s*'[^']*')?\)|[A-Za-z]\(0x[a-fA-F0-9]+\)|'[^']*'))*""",
-            RegexOption.DOT_MATCHES_ALL
-        )
-
         private val OBJECT_ASSIGN_REPLACEMENT_REGEX = Regex(
             """var\s+[a-zA-Z]\s*=\s*\{\.\.\.[a-zA-Z],\s*sourcesEncoded:\s*sourcesEncoded\s*}"""
         )
     }
 
     fun getCompleteJsCode(jsResponse: String?): String? {
+
+        val relevantSection = jsResponse?.between("JSON", "...")
+
         if (jsResponse.isNullOrBlank()) {
             Logger.error("Empty response received")
             return null
@@ -45,7 +43,12 @@ class AbyssJsCodeExtractor {
             return null
         }
 
-        val sourcesEncodedDeclaration = extractComplexConcatenation(jsResponse, varName)
+        if (relevantSection == null) {
+            Logger.error("relevantSection wasn't found")
+            return null
+        }
+
+        val sourcesEncodedDeclaration = extractComplexConcatenation(varName, relevantSection)
         if (sourcesEncodedDeclaration == null) {
             Logger.error("Function chain not found")
             return null
@@ -57,7 +60,7 @@ class AbyssJsCodeExtractor {
             return null
         }
 
-        val objectAssignmentPattern = extractObjectAssignmentPattern(jsResponse, functionVariableNamesPair)
+        val objectAssignmentPattern = extractObjectAssignmentPattern(functionVariableNamesPair, relevantSection)
         if (objectAssignmentPattern == null) {
             Logger.error("Object assignment pattern not found")
             return null
@@ -103,22 +106,20 @@ class AbyssJsCodeExtractor {
     private fun extractCommaVariableName(jsCode: String): String? =
         COMMA_VARIABLE_ASSIGNMENT_REGEX.find(jsCode)?.groupValues?.get(1)
 
-    private fun extractObjectAssignmentPattern(jsCode: String, varPair: Pair<String, String>): String? {
-        val startIndex = jsCode.indexOf("JSON")
-        val endIndex = jsCode.lastIndexOf("...")
-
-        val relevantSection = jsCode.substring(startIndex, endIndex)
-        return OBJECT_ASSIGNMENT_PATTERN_REGEX.find(relevantSection)?.value
+    private fun extractObjectAssignmentPattern(
+        varPair: Pair<String, String>,
+        relevantJsSection: String
+    ): String? {
+        return OBJECT_ASSIGNMENT_PATTERN_REGEX.find(relevantJsSection)?.value
             ?.replace("${varPair.first}(", "${varPair.second}(", false)
             ?.plus("sourcesEncoded: sourcesEncoded}")
     }
 
-    private fun extractComplexConcatenation(jsCode: String, varName: String): String? {
-        val longestChain = COMPLEX_CONCATENATION_REGEX.findAll(jsCode)
-            .map { it.value }
-            .maxByOrNull { it.length }
-            ?: return null
-
+    private fun extractComplexConcatenation(
+        varName: String,
+        relevantSection: String
+    ): String? {
+        val longestChain = relevantSection.split("=").getOrNull(2) ?: return null
         val oldName = longestChain.substringBefore("(")
         return "var $oldName = $varName;\nvar sourcesEncoded = $longestChain"
     }
