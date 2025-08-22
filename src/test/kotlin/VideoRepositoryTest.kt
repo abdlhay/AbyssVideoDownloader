@@ -11,6 +11,7 @@ import org.koin.core.context.startKoin
 import java.util.stream.Stream
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.fail
 
 class VideoDownloaderIntegrationTest : KoinComponent {
 
@@ -28,6 +29,10 @@ class VideoDownloaderIntegrationTest : KoinComponent {
             val result = videoDownloader.getVideoMetaData(url, headers, "curl-impersonate-chrome")
             println("result: $result")
 
+            if (result?.sources.isNullOrEmpty()) {
+                fail("empty source list returned")
+            }
+
             assertNotNull(result, "video metadata should not be null for URL: $url")
             assertEquals(expectedSlug, result.slug, "Expected slug '$expectedSlug' for URL: $url")
         } catch (e: Exception) {
@@ -39,6 +44,7 @@ class VideoDownloaderIntegrationTest : KoinComponent {
     companion object {
         @JvmStatic
         fun videoUrlsAndSlugs(): Stream<Arguments> = Stream.of(
+            Arguments.of("https://abysscdn.com/?v=hY_y1CqB0", "hY_y1CqB0"),
             Arguments.of("https://abysscdn.com/?v=IHkd0Mws_", "IHkd0Mws_"),
             Arguments.of("https://abysscdn.com/?v=JZMRhKMkP", "JZMRhKMkP"),
             Arguments.of("https://abysscdn.com/?v=2xvPq9YUT", "2xvPq9YUT"),
@@ -48,7 +54,9 @@ class VideoDownloaderIntegrationTest : KoinComponent {
             Arguments.of("https://abysscdn.com/?v=Kj1HAeAde", "Kj1HAeAde"),
             Arguments.of("https://abysscdn.com/?v=ZHO0R7ZkR", "ZHO0R7ZkR"),
             Arguments.of("https://abysscdn.com/?v=GZr_NbnAwvD", "GZr_NbnAwvD"),
-            Arguments.of("https://abysscdn.com/?v=kzGEXYtPBn", "kzGEXYtPBn")
+            Arguments.of("https://abysscdn.com/?v=hpXFDLHDj", "hpXFDLHDj"),
+            Arguments.of("https://abysscdn.com/?v=vG3vP922G", "vG3vP922G"),
+            Arguments.of("https://abysscdn.com/?v=jW0HhYs6y", "jW0HhYs6y")
         )
 
         @JvmStatic
