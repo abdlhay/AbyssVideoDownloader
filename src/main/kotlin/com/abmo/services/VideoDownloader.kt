@@ -178,15 +178,8 @@ class VideoDownloader: KoinComponent {
      * @return The decoded video metadata, or null if the extraction or decoding fails.
      */
     fun getVideoMetaData(url: String, headers: Map<String, String?>?, curlPath: String): Video? {
-        Logger.debug("Starting HTTP GET request to $url")
         val response = httpClientManager.makeHttpRequest(url, headers, curlPath)
-
-        val encryptedData = response?.body
-        val responseCode = response?.statusCode
-        Logger.debug("Received response with status $responseCode", responseCode !in 200..299)
-
-        if (encryptedData == null) return null
-
+        val encryptedData = response?.body ?: return null
         val videoData = extractEncryptedVideoMetaData(encryptedData)?.toObject<VideoDto>()
         val decodedSources = cryptoHelper.decodeEncryptedString(videoData?.sourcesEncoded)?.sources
         return videoData?.toVideo(decodedSources)
