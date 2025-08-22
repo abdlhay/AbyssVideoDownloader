@@ -55,21 +55,21 @@ class Application(private val args: Array<String>) : KoinComponent {
             if (videoSources == null) {
                 Logger.error("Video with ID $videoID not found")
             } else {
-                val mapResolution = when(resolution) {
+                val mappedResolution = when(resolution) {
                     "h" -> videoSources.maxBy { it?.size!! }?.label
                     "l" -> videoSources.minBy { it?.size!! }?.label
                     "m" -> videoSources.sortedBy { it?.size }.let { sorted ->
                             sorted.getOrNull((sorted.size - 1) / 2) }?.label
                     else -> videoSources.maxBy { it?.size!! }?.label
                 }
-                val defaultFileName = "${url.getParameter("v")}_${mapResolution}_${System.currentTimeMillis()}.mp4"
+                val defaultFileName = "${url.getParameter("v")}_${mappedResolution}_${System.currentTimeMillis()}.mp4"
                 val outputFile = outputFileName?.let { File(it) } ?: run {
                     Logger.warn("No output file specified. The video will be saved to the current directory as '$defaultFileName'.\n")
                     File(".", defaultFileName) // Default directory and name for saving video
                 }
-                if (mapResolution != null) {
-                    val config = Config(url, mapResolution, outputFile, headers, numberOfConnections)
-                    Logger.info("video with id $videoID and resolution $mapResolution being processed...\n")
+                if (mappedResolution != null) {
+                    val config = Config(url, mappedResolution, outputFile, headers, numberOfConnections)
+                    Logger.info("video with id $videoID and resolution $mappedResolution being processed...\n")
                     try {
                         videoDownloader.downloadSegmentsInParallel(config, videoMetadata)
                     } catch (e: Exception) {
