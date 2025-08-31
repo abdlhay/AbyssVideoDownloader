@@ -18,7 +18,7 @@ data class VideoDto(
     val preload: String? = null,
     val preview: Boolean? = false,
     val slug: String? = null,
-    val sourcesEncoded: String? = null,
+    val sourcesEncrypted: String? = null,
     val tracker: Tracker? = Tracker(),
     val user_id: Int? = 0,
     val width: String? = null

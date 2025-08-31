@@ -181,7 +181,7 @@ class VideoDownloader: KoinComponent {
         val response = httpClientManager.makeHttpRequest(url, headers, curlPath)
         val encryptedData = response?.body ?: return null
         val videoData = extractEncryptedVideoMetaData(encryptedData)?.toObject<VideoDto>()
-        val decodedSources = cryptoHelper.decodeEncryptedString(videoData?.sourcesEncoded)?.sources
+        val decodedSources = cryptoHelper.decodeEncryptedString(videoData?.sourcesEncrypted)?.sources?.distinct()
         return videoData?.toVideo(decodedSources)
 
     }
