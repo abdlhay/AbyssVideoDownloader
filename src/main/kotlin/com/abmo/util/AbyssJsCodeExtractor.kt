@@ -15,17 +15,7 @@ class AbyssJsCodeExtractor {
             RegexOption.DOT_MATCHES_ALL
         )
 
-        private val VARIABLE_ASSIGNMENT_REGEX = Regex("""var\s+([a-zA-Z])\s*=\s*([a-zA-Z]);""")
-        private val COMMA_VARIABLE_ASSIGNMENT_REGEX = Regex(",\\s*([a-zA-Z_]\\w*)\\s*=\\s*\\{\\s*}")
-
-        private val OBJECT_ASSIGNMENT_PATTERN_REGEX = Regex(
-            "var\\s+([a-zA-Z_]\\w*)\\s*=\\s*\\{\\s*};.*?var\\s+\\w+\\s*=\\s*\\{\\s*\\.\\.\\.\\1\\s*,",
-            RegexOption.DOT_MATCHES_ALL
-        )
-
-        private val OBJECT_ASSIGN_REPLACEMENT_REGEX = Regex(
-            """var\s+[a-zA-Z]\s*=\s*\{\.\.\.[a-zA-Z],\s*sourcesEncoded:\s*sourcesEncoded\s*}"""
-        )
+        private val VARIABLE_ASSIGNMENT_REGEX = Regex("""var\s+\*?([a-zA-Z0-9_]+)\s*=\s*\*?([a-zA-Z0-9_]+);""")
     }
 
     fun getCompleteJsCode(jsResponse: String?): String? {
@@ -48,89 +38,71 @@ class AbyssJsCodeExtractor {
             return null
         }
 
-        val sourcesEncodedDeclaration = extractComplexConcatenation(varName, relevantSection)
-        if (sourcesEncodedDeclaration == null) {
-            Logger.error("Function chain not found")
-            return null
-        }
-
         val functionVariableNamesPair = extractVarNamesFromFunction(jsResponse)
         if (functionVariableNamesPair == null || functionVariableNamesPair.toList().isEmpty()) {
             Logger.error("failed to retrieve variable pair from the function")
             return null
         }
 
-        val objectAssignmentPattern = extractObjectAssignmentPattern(functionVariableNamesPair, relevantSection)
-        if (objectAssignmentPattern == null) {
-            Logger.error("Object assignment pattern not found")
-            return null
-        }
-
-
-
-        val commaVariableName = extractCommaVariableName(jsResponse)
-        if (commaVariableName == null) {
-            Logger.error("Comma variable name not found")
-            return null
-        }
-
         return buildCompleteCode(
             jsResponse = jsResponse,
-            varName = varName,
-            sourcesEncodedDeclaration = sourcesEncodedDeclaration,
-            objectAssignmentPattern = objectAssignmentPattern,
-            commaVariableName = commaVariableName
+            varName = varName
         )
     }
 
     private fun buildCompleteCode(
         jsResponse: String,
-        varName: String,
-        sourcesEncodedDeclaration: String,
-        objectAssignmentPattern: String,
-        commaVariableName: String
+        varName: String
     ): String = buildString {
-        extractShiftPushFunctions(jsResponse).forEach { appendLine(it) }
+        extractShiftPushFunctions(jsResponse)?.let { appendLine(it) }
         extractSelfAssigningFunction(jsResponse)?.let { appendLine(it) }
         extractFunction(jsResponse, varName)?.let { appendLine(it) }
-        appendLine("var $commaVariableName = {};")
-        extractVariableDeclarations(jsResponse).forEach { appendLine(it) }
-        appendLine(sourcesEncodedDeclaration)
-        appendLine(replaceWithObjectAssign(objectAssignmentPattern))
+        val videoObject = getVideoMetadataObject(jsResponse)
+        appendLine(buildVarDeclaration(videoObject, varName))
+        appendLine(videoObject)
+        appendLine("var b = Object.assign({}, ${getVideoMetaDataVariableName(videoObject)});")
+        appendLine("b.sourcesEncrypted = ${getEncryptedSourceVariableName(videoObject)};")
         appendLine("java.lang.System.out.println(JSON.stringify(b))")
+    }
+
+    // This is the worst shit I’ve written for extraction but who cares ~ it works :V
+    private fun getVideoMetadataObject(jsCode: String): String {
+        val result = jsCode.between("JSON", "...")
+            .replaceLast("," ,"")
+            .replace("...{", "")
+            .split(",_")
+            .filterNot {
+                it.contains("JSON") || it.contains("window")
+            }.map { "_$it" }
+        val shortestEntity = result.minBy { it.length }
+        return result.filterNot { it == shortestEntity }.toString()
+            .substringAfter("[").substringBeforeLast("]")
+    }
+
+    private fun getEncryptedSourceVariableName(videoObject: String): String {
+        return videoObject.substringBefore("=")
+    }
+
+    private fun getVideoMetaDataVariableName(videoObject: String): String {
+        return videoObject.between(",","={").replace(",", "").trim()
+    }
+
+    private fun buildVarDeclaration(videoObject: String, functionName: String): String {
+        val varName = "_" + videoObject.substringAfter("=")
+            .substringAfter("_").substringBefore("(")
+        return "var $varName = $functionName"
     }
 
     private fun extractVariableName(jsCode: String): String? =
         VARIABLE_ASSIGNMENT_REGEX.find(jsCode)?.groupValues?.get(2)
 
-    private fun extractCommaVariableName(jsCode: String): String? =
-        COMMA_VARIABLE_ASSIGNMENT_REGEX.find(jsCode)?.groupValues?.get(1)
-
-    private fun extractObjectAssignmentPattern(
-        varPair: Pair<String, String>,
-        relevantJsSection: String
-    ): String? {
-        return OBJECT_ASSIGNMENT_PATTERN_REGEX.find(relevantJsSection)?.value
-            ?.replace("${varPair.first}(", "${varPair.second}(", false)
-            ?.plus("sourcesEncoded: sourcesEncoded}")
-    }
-
-    private fun extractComplexConcatenation(
-        varName: String,
-        relevantSection: String
-    ): String? {
-        val longestChain = relevantSection.split("=").getOrNull(2) ?: return null
-        val oldName = longestChain.substringBefore("(")
-        return "var $oldName = $varName;\nvar sourcesEncoded = $longestChain"
-    }
-
-    private fun extractShiftPushFunctions(jsCode: String): List<String> =
+    private fun extractShiftPushFunctions(jsCode: String): String? =
         FUNCTION_WITH_SHIFT_PUSH_REGEX.findAll(jsCode)
             .map { it.value }
             .filter { functionCode ->
                 containsPattern(functionCode, "shift") && containsPattern(functionCode, "push")
             }
-            .toList()
+            .firstOrNull()
 
     private fun containsPattern(code: String, pattern: String): Boolean =
         code.contains(Regex("""\b$pattern\b|\['$pattern']|\.$pattern\("""))
@@ -143,25 +115,6 @@ class AbyssJsCodeExtractor {
             """function\s+($functionName)\s*\([^)]*\)\s*\{((?:[^{}]++|\{(?:[^{}]++|\{[^{}]*+})*+})*+)}"""
         )
         return pattern.find(jsCode)?.value
-    }
-
-    private fun replaceWithObjectAssign(code: String): String {
-        val variableName = code.substringAfter("...")
-            .substringBefore(",sourcesEncoded: sourcesEncoded")
-
-        return OBJECT_ASSIGN_REPLACEMENT_REGEX.replace(code) {
-            """
-            var b = Object.assign({}, $variableName);
-            b.sourcesEncoded = sourcesEncoded;
-            """.trimIndent()
-        }
-    }
-
-    private fun extractVariableDeclarations(jsCode: String): List<String> {
-        val regex = Regex("""var\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*\{\s*}\s*;""")
-        return regex.findAll(jsCode)
-            .map { it.value }
-            .toList()
     }
 
     private fun extractVarNamesFromFunction(code: String): Pair<String, String>? {
