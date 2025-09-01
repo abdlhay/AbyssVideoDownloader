@@ -65,7 +65,15 @@
 -keep class org.jsoup.** { *; }
 
 # Keep methods that are used reflectively for data extraction and parsing
--keepclassmembers class org.jsoup.nodes.** {
-    *;
-}
+-keepclassmembers class org.jsoup.nodes.** { *; }
 #------------------org.jsoup-------------------
+
+
+-keep class ch.qos.logback.** { *; }
+-keep class org.slf4j.** { *; }
+-dontwarn ch.qos.logback.**
+-dontwarn org.slf4j.**
+
+# Keep Netty internal utilities
+-keep class io.netty.** { *; }
+-dontwarn io.netty.**
