@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col items-center justify-center min-h-screen p-6">
+<div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-3xl">
+    <h1 class="text-2xl font-bold mb-6 text-center">Abyss Video Downloader</h1>
+
+    <!-- Form Section -->
+    <form id="urlForm" class="space-y-4">
+        <!-- URL -->
+        <div>
+            <label class="block mb-1 font-semibold">Video URL / ID *</label>
+            <input id="videoUrl" type="text" required
+                   class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </div>
+
+        <!-- Output Path -->
+        <div>
+            <label class="block mb-1 font-semibold">File Name (optional)</label>
+            <p class="text-sm text-gray-500">
+                Default: <code>videoId_res_timestamp.mp4</code>
+            </p>
+            <input id="outputFileName" type="text"
+                   class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                   placeholder="Enter custom file name" maxlength="100"/>
+        </div>
+
+        <!-- Advanced toggle -->
+        <button type="button" onclick="toggleAdvanced()"
+                class="text-blue-500 underline mb-2">Show Advanced Options</button>
+
+        <!-- Advanced section -->
+        <div id="advancedSection" class="hidden space-y-4 border p-4 rounded-lg bg-gray-50">
+            <!-- Connections -->
+            <div>
+                <label class="block mb-1 font-semibold">Connections (1–10)</label>
+                <input id="connections" type="number" min="1" max="10"
+                       class="w-32 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+            <!-- Headers -->
+            <div>
+                <label class="block mb-1 font-semibold">Headers (optional)</label>
+                <textarea id="headers" rows="3"
+                          class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          placeholder="key:value&#10;key2:value2"></textarea>
+            </div>
+        </div>
+
+        <!-- Fetch Button -->
+        <button id="fetchBtn" type="submit"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center justify-center">
+            <span id="fetchText">Fetch</span>
+            <svg id="fetchSpinner" class="animate-spin ml-2 h-5 w-5 text-white hidden"
+                 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10"
+                        stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+        </button>
+    </form>
+
+    <!-- Results Section -->
+    <div id="sourcesContainer" class="hidden mt-6 fade-in">
+        <h2 class="text-xl font-semibold mb-4">Available Sources</h2>
+        <table class="table-auto w-full border-collapse border border-gray-300">
+            <thead>
+            <tr class="bg-gray-200">
+                <th class="border border-gray-300 px-4 py-2">Resolution</th>
+                <th class="border border-gray-300 px-4 py-2">Codec</th>
+                <th class="border border-gray-300 px-4 py-2">Size</th>
+                <th class="border border-gray-300 px-4 py-2">Type</th>
+                <th class="border border-gray-300 px-4 py-2">Action</th>
+            </tr>
+            </thead>
+            <tbody id="sourcesTable"></tbody>
+        </table>
+    </div>
+
+    <!-- Progress Section -->
+    <div id="progressContainer" class="hidden mt-6 fade-in">
+        <h2 class="text-xl font-semibold mb-4">Download Progress</h2>
+        <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 rounded-full h-3">
+                <div id="progressBar" class="bg-blue-500 h-3 rounded-full progress-bar" style="width: 0%"></div>
+            </div>
+
+            <!-- Progress Text -->
+            <div class="flex justify-between text-sm">
+                <span id="progressPercent">0%</span>
+                <span id="progressStatus" class="text-gray-600">Ready to download</span>
+            </div>
+
+            <!-- Detailed Progress -->
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="font-medium">Segments:</span>
+                    <span id="segmentsProgress">0 / 0</span>
+                </div>
+                <div>
+                    <span class="font-medium">Downloaded:</span>
+                    <span id="bytesProgress">0 B / 0 B</span>
+                </div>
+                <div>
+                    <span class="font-medium">Speed:</span>
+                    <span id="downloadSpeed">0 B/s</span>
+                </div>
+                <div>
+                    <span class="font-medium">Time elapsed:</span>
+                    <span id="timeElapsed">00:00</span>
+                </div>
+            </div>
+
+            <!-- Connection Status -->
+            <div class="text-sm">
+                <span class="font-medium">Connection:</span>
+                <span id="connectionStatus" class="text-gray-500">Disconnected</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

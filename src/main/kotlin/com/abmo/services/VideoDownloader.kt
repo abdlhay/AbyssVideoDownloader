@@ -94,6 +94,17 @@ class VideoDownloader: KoinComponent {
                         startTime,
                         lastUpdateTime
                     )
+
+                    val progress = mapOf(
+                        "downloadedSegments" to downloadedSegments.get(),
+                        "totalSegments" to totalSegments,
+                        "downloadedBytes" to totalBytesDownloaded.get(),
+                        "mediaSize" to mediaSize,
+                        "percent" to (downloadedSegments.get().toDouble() / totalSegments * 100.0),
+                        "startTime" to startTime
+                    )
+                    ProgressManager.emitProgress(progress)
+
                     delay(1000)
                 }
             }
@@ -140,7 +151,7 @@ class VideoDownloader: KoinComponent {
 
 
 
-    private fun mergeSegmentsIntoMp4File(segmentFolderPath: File, output: File) {
+    private suspend fun mergeSegmentsIntoMp4File(segmentFolderPath: File, output: File) {
         val segmentFiles  = segmentFolderPath.listFiles { file -> file.name.startsWith("segment_") }
             ?.toList()
             ?.sortedBy { it.name.removePrefix("segment_").toIntOrNull() }
@@ -150,6 +161,12 @@ class VideoDownloader: KoinComponent {
         }
 
         Logger.success("Segments merged successfully.")
+
+        ProgressManager.emitProgress(mapOf(
+            "percent" to 100.0,
+            "status" to "completed",
+            "message" to "Download completed successfully!"
+        ))
 
         if (segmentFolderPath.exists() && segmentFolderPath.isDirectory) {
             val files = segmentFolderPath.listFiles()
@@ -182,6 +199,7 @@ class VideoDownloader: KoinComponent {
         val encryptedData = response?.body ?: return null
         val videoData = extractEncryptedVideoMetaData(encryptedData)?.toObject<VideoDto>()
         val decodedSources = cryptoHelper.decodeEncryptedString(videoData?.sourcesEncrypted)?.sources?.distinct()
+            ?.sortedBy { it?.size }
         return videoData?.toVideo(decodedSources)
 
     }

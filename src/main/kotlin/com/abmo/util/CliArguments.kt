@@ -123,4 +123,10 @@ class CliArguments(private val args: Array<String>) {
     }
 
 
+    fun isGuiRequested(): Boolean {
+        val index = args.indexOf("--gui")
+        return index != -1
+    }
+
+
 }

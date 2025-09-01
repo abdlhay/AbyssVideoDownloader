@@ -5,6 +5,7 @@ val unirestVersion: String by project
 val rhinoVersion: String by project
 val kotlinCoroutinesVersion: String by project
 val jsoupVersion: String by project
+val logbackVersion: String by project
 
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -52,6 +53,14 @@ dependencies {
 
     // dependency injection
     implementation("io.insert-koin:koin-core:$koinVersion")
+    implementation("io.insert-koin:koin-ktor:$koinVersion")
+
+    implementation("io.ktor:ktor-server-core-jvm:3.2.3")
+    implementation("io.ktor:ktor-server-netty-jvm:3.2.3")
+    implementation("io.ktor:ktor-server-html-builder-jvm:3.2.3")
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("io.ktor:ktor-server-websockets:3.2.3")
+
 }
 
 tasks.test {
@@ -68,6 +77,7 @@ tasks {
             exclude(dependency("org.mozilla:.*:.*"))
             exclude(dependency("org.apache.httpcomponents:httpcore:.*"))
             exclude(dependency("org.apache.httpcomponents:httpclient:.*"))
+            exclude(dependency("ch.qos.logback:logback-classic:.*"))
         }
         archiveFileName = "abyss-dl-shadowJar.jar"
     }
