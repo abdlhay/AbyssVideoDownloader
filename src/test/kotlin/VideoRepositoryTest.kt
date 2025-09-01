@@ -1,5 +1,6 @@
 import com.abmo.di.koinModule
 import com.abmo.services.VideoDownloader
+import com.abmo.util.toJson
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.params.ParameterizedTest
@@ -27,7 +28,7 @@ class VideoDownloaderIntegrationTest : KoinComponent {
         try {
             println("testing URL: $url")
             val result = videoDownloader.getVideoMetaData(url, headers, "curl-impersonate-chrome")
-            println("result: $result")
+            println("result: ${result?.toJson()}")
 
             if (result?.sources.isNullOrEmpty()) {
                 fail("empty source list returned")
