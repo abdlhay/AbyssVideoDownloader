@@ -43,21 +43,16 @@ class VideoDownloaderIntegrationTest : KoinComponent {
 
     companion object {
         @JvmStatic
-        fun videoUrlsAndSlugs(): Stream<Arguments> = Stream.of(
-            Arguments.of("https://abysscdn.com/?v=hY_y1CqB0", "hY_y1CqB0"),
-            Arguments.of("https://abysscdn.com/?v=IHkd0Mws_", "IHkd0Mws_"),
-            Arguments.of("https://abysscdn.com/?v=JZMRhKMkP", "JZMRhKMkP"),
-            Arguments.of("https://abysscdn.com/?v=2xvPq9YUT", "2xvPq9YUT"),
-            Arguments.of("https://abysscdn.com/?v=CibObsG69", "CibObsG69"),
-            Arguments.of("https://abysscdn.com/?v=cAlc2yA_P", "cAlc2yA_P"),
-            Arguments.of("https://abysscdn.com/?v=2xvPq9YUT", "2xvPq9YUT"),
-            Arguments.of("https://abysscdn.com/?v=Kj1HAeAde", "Kj1HAeAde"),
-            Arguments.of("https://abysscdn.com/?v=ZHO0R7ZkR", "ZHO0R7ZkR"),
-            Arguments.of("https://abysscdn.com/?v=GZr_NbnAwvD", "GZr_NbnAwvD"),
-            Arguments.of("https://abysscdn.com/?v=hpXFDLHDj", "hpXFDLHDj"),
-            Arguments.of("https://abysscdn.com/?v=vG3vP922G", "vG3vP922G"),
-            Arguments.of("https://abysscdn.com/?v=jW0HhYs6y", "jW0HhYs6y")
-        )
+        fun videoUrlsAndSlugs(): Stream<Arguments> {
+            val videoIDList = listOf(
+                "hY_y1CqB0", "IHkd0Mws_", "JZMRhKMkP", "2xvPq9YUT", "CibObsG69",
+                "cAlc2yA_P", "2xvPq9YUT", "Kj1HAeAde", "ZHO0R7ZkR", "GZr_NbnAwvD", "hpXFDLHDj",
+                "vG3vP922G", "jW0HhYs6y"
+            )
+            return Stream.of(*videoIDList.map {
+                    videoId -> Arguments.of("https://abysscdn.com/?v=$videoId", videoId)
+            }.toTypedArray())
+        }
 
         @JvmStatic
         @BeforeAll
