@@ -28,11 +28,9 @@ class ProviderDispatcher: KoinComponent {
                 contains("tvphim") -> TvphimProvider(javaScriptExecutor)
                 equals("sieutamphim.com") -> SieutamphimProvider()
                 equals("phimbet.biz") -> PhimbetProvider()
-                equals("fimmoi.top") -> FimmoiProvider()
                 contains("motchill") || equals("subnhanh.win") -> MotchillProvider()
                 equals("animet3.biz") -> Animet3Provider()
                 equals("tvhayw.org") -> TvhaywProvider()
-                equals("catoonhub.com") -> CatoonHubProvider()
 
                 else -> AbyssToProvider()
             }
