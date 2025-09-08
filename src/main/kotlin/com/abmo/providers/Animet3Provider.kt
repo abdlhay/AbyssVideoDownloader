@@ -15,9 +15,9 @@ class Animet3Provider: Provider {
         val movieId = matchResult.groupValues[1]
         val episodeId = matchResult.groupValues[2]
 
-        val response = Unirest.post("https://animet3.biz/ajax/player_hrx")
+        val response = Unirest.post("https://anime11.site/ajax/player_hrx")
             .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-            .body("id=$movieId&ep=$episodeId&sv=hr-0")
+            .body("id=$movieId&ep=$episodeId&sv=hrx-0")
             .asString().body
 
         val videoID = response.toJsoupDocument()
