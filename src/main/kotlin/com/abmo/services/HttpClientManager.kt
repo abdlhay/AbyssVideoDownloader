@@ -12,11 +12,8 @@ class HttpClientManager {
     fun makeHttpRequest(url: String, headers: Map<String, String?>? = null, curlPath: String): HttpResponse? {
         Logger.debug("Initiating http request to $url")
 
-    fun makeHttpRequest(url: String, headers: Map<String, String?>? = null, curlPath: String): Response? {
-        Logger.debug("Starting HTTP GET request to $url")
-
-        return if (isLinuxDistro()) {
-            makeRequestWithCurl(url, headers, curlPath)
+        return if (isWindowsOS()) {
+            makeHttpRequest(url, headers)
         } else {
             val api = ImpersonatorFactory.ios()
             val context = api.newSSLContext(null, null)
@@ -28,14 +25,9 @@ class HttpClientManager {
         }
     }
 
-    private fun isLinuxDistro(): Boolean {
+    private fun isWindowsOS(): Boolean {
         val osName = System.getProperty("os.name").lowercase()
-        val linuxDistros = setOf(
-            "linux", "ubuntu", "debian", "centos", "fedora",
-            "redhat", "suse", "arch", "manjaro", "mint",
-            "elementary", "kali", "gentoo", "alpine"
-        )
-        return linuxDistros.any { osName.contains(it) }
+        return osName.contains("windows")
     }
 
     private fun makeRequestWithCurl(url: String, headers: Map<String, String?>?, curlPath: String): Response? {
