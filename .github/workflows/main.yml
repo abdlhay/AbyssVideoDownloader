@@ -44,7 +44,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2.0.6
         with:
-          tag_name: v1.5.13
-          name: AbyssVideoDownloader-v${{ github.run_number }}
+          tag_name: v1.6.0
+          name: abyss-dl-${{ github.ref_name }}
           files: AbyssVideoDownloader/build/libs/abyss-dl.jar
           draft: true
