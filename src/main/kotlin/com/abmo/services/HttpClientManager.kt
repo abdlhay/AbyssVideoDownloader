@@ -1,16 +1,16 @@
 package com.abmo.services
 
 import com.abmo.common.Logger
+import com.abmo.model.HttpResponse
+import com.github.zhkl0228.impersonator.ImpersonatorFactory
 import com.mashape.unirest.http.Unirest
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import okhttp3.OkHttpClientFactory
+import okhttp3.Request
 
 class HttpClientManager {
 
-    companion object {
-        private const val USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0.6668.102 Safari/537.36 (AirWatch Browser v22.05.0.4)"
-        private const val CURL_IMPERSONATE_INSTALL_URL = "https://github.com/lwthiker/curl-impersonate/blob/main/INSTALL.md"
-    }
+    fun makeHttpRequest(url: String, headers: Map<String, String?>? = null, curlPath: String): HttpResponse? {
+        Logger.debug("Initiating http request to $url")
 
     fun makeHttpRequest(url: String, headers: Map<String, String?>? = null, curlPath: String): Response? {
         Logger.debug("Starting HTTP GET request to $url")
@@ -18,7 +18,13 @@ class HttpClientManager {
         return if (isLinuxDistro()) {
             makeRequestWithCurl(url, headers, curlPath)
         } else {
-            makeHttpRequest(url, headers)
+            val api = ImpersonatorFactory.ios()
+            val context = api.newSSLContext(null, null)
+            val factory = OkHttpClientFactory.create(api)
+            val client = factory.newHttpClient()
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            HttpResponse(body = response.body?.string(), statusCode = response.code)
         }
     }
 

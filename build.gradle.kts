@@ -52,6 +52,10 @@ dependencies {
 
     // dependency injection
     implementation("io.insert-koin:koin-core:$koinVersion")
+
+    implementation("com.github.zhkl0228:impersonator-okhttp:1.0.8")
+
+    implementation("org.slf4j:slf4j-nop:2.0.16")
 }
 
 tasks.test {
