@@ -30,24 +30,8 @@ class HttpClientManager {
         return osName.contains("windows")
     }
 
-    private fun makeRequestWithCurl(url: String, headers: Map<String, String?>?, curlPath: String): Response? {
-        Logger.debug("Running on Linux distro, using curl-impersonate-chrome")
 
-        if (!isCurlImpersonateAvailable()) {
-            showInstallationInstructions()
-            return null
-        }
-
-        return try {
-            val command = buildCurlCommand(url, headers, curlPath)
-            executeCurlCommand(command)
-        } catch (e: Exception) {
-            Logger.error("Error executing curl-impersonate-chrome: ${e.message}")
-            null
-        }
-    }
-
-    private fun makeHttpRequest(url: String, headers: Map<String, String?>?): Response? {
+    private fun makeHttpRequest(url: String, headers: Map<String, String?>?): HttpResponse? {
         Logger.debug("Running on Windows, using Unirest")
 
         return try {
@@ -62,7 +46,7 @@ class HttpClientManager {
                 return null
             }
 
-            Response(
+            HttpResponse(
                 body = response.body,
                 statusCode = response.status
             )
@@ -71,88 +55,4 @@ class HttpClientManager {
             null
         }
     }
-
-    private fun isCurlImpersonateAvailable(): Boolean {
-        return try {
-            val processBuilder = ProcessBuilder("curl-impersonate-chrome", "--version")
-            val process = processBuilder.start()
-            val exitCode = process.waitFor()
-            exitCode == 0
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    private fun showInstallationInstructions() {
-        Logger.error("curl-impersonate-chrome is not installed or not found in PATH")
-        println("ERROR: curl-impersonate-chrome is required for Linux-based environments.")
-        println("Please install it by following the instructions at:")
-        println(CURL_IMPERSONATE_INSTALL_URL)
-    }
-
-    private fun buildCurlCommand(url: String, headers: Map<String, String?>?, curlPath: String): List<String> {
-        val command = mutableListOf(
-            curlPath,
-            "-s",
-            "-A", USER_AGENT,
-            "-w", "%{http_code}",
-            url
-        )
-
-        headers?.forEach { (key, value) ->
-            if (value != null) {
-                command.addAll(listOf("-H", "$key: $value"))
-            }
-        }
-
-        return command
-    }
-
-    private fun executeCurlCommand(command: List<String>): Response? {
-        val processBuilder = ProcessBuilder(command)
-        val process = processBuilder.start()
-
-        val reader = BufferedReader(InputStreamReader(process.inputStream))
-        val fullResponse = reader.readText()
-        reader.close()
-
-        val exitCode = process.waitFor()
-        Logger.debug("curl-impersonate-chrome completed with exit code $exitCode", exitCode != 0)
-
-        if (exitCode != 0) {
-            val errorReader = BufferedReader(InputStreamReader(process.errorStream))
-            val errorOutput = errorReader.readText()
-            errorReader.close()
-            Logger.error("curl-impersonate-chrome failed: $errorOutput")
-            return null
-        }
-
-        val statusCode = try {
-            val lastThreeChars = fullResponse.takeLast(3)
-            lastThreeChars.toInt()
-        } catch (e: Exception) {
-            Logger.error("Failed to parse HTTP status code from curl response")
-            return null
-        }
-
-
-        val responseBody = fullResponse.dropLast(3)
-
-        Logger.debug("Received response with status $statusCode", statusCode !in 200..299)
-
-        if (statusCode !in 200..299) {
-            Logger.error("HTTP request failed with status $statusCode")
-            return null
-        }
-
-        return Response(
-            body = responseBody,
-            statusCode = statusCode
-        )
-    }
 }
-
-data class Response(
-    val body: String,
-    val statusCode: Int
-)
