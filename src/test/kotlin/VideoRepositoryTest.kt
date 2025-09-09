@@ -1,6 +1,5 @@
 import com.abmo.di.koinModule
 import com.abmo.services.VideoDownloader
-import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -20,7 +19,7 @@ class VideoDownloaderIntegrationTest : KoinComponent {
     @ParameterizedTest
     @MethodSource("videoUrlsAndSlugs")
     fun `test video metadata extraction from real URLs returns correct slug`(url: String, expectedSlug: String) {
-        assumeTrue(System.getenv("CI") != "true", "Skipping test in CI environment")
+//        assumeTrue(System.getenv("CI") != "true", "Skipping test in CI environment")
 
         val headers = mapOf("Referer" to "https://abyss.to/")
 
