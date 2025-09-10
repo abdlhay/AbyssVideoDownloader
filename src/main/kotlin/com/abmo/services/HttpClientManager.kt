@@ -9,14 +9,14 @@ import okhttp3.Request
 
 class HttpClientManager {
 
-    fun makeHttpRequest(url: String, headers: Map<String, String?>? = null, curlPath: String): HttpResponse? {
+    fun makeHttpRequest(url: String, headers: Map<String, String?>? = null): HttpResponse? {
         Logger.debug("Initiating http request to $url")
 
         return if (isWindowsOS()) {
-            makeHttpRequest(url, headers)
+            makeHttpRequestWithUnirest(url, headers)
         } else {
             val api = ImpersonatorFactory.ios()
-            val context = api.newSSLContext(null, null)
+            api.newSSLContext(null, null)
             val factory = OkHttpClientFactory.create(api)
             val client = factory.newHttpClient()
             val request = Request.Builder().url(url).build()
@@ -31,7 +31,7 @@ class HttpClientManager {
     }
 
 
-    private fun makeHttpRequest(url: String, headers: Map<String, String?>?): HttpResponse? {
+    private fun makeHttpRequestWithUnirest(url: String, headers: Map<String, String?>?): HttpResponse? {
         Logger.debug("Running on Windows, using Unirest")
 
         return try {
