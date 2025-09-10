@@ -25,7 +25,6 @@ class Application(private val args: Array<String>) : KoinComponent {
         val headers = cliArguments.getHeaders()
         val numberOfConnections = cliArguments.getParallelConnections()
         val videoIdsOrUrls = cliArguments.getVideoIdsOrUrlsWithResolutions()
-        val curlPath = cliArguments.getCurlPath()
         Constants.VERBOSE = cliArguments.isVerboseEnabled()
 
         if (outputFileName != null) {
@@ -45,10 +44,7 @@ class Application(private val args: Array<String>) : KoinComponent {
             } else { emptyMap() }
 
             val url = "$ABYSS_BASE_URL/?v=$videoID"
-            val videoMetadata = videoDownloader.getVideoMetaData(
-                url,
-                headers ?: defaultHeader,
-                curlPath)
+            val videoMetadata = videoDownloader.getVideoMetaData(url, headers ?: defaultHeader)
             val videoSources = videoMetadata?.sources
                 ?.sortedBy { it?.label?.filter { char -> char.isDigit() }?.toIntOrNull() }
 
