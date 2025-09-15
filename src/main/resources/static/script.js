@@ -276,7 +276,7 @@ function resetDownloadButtons() {
 // Event listeners and initialization
 window.onload = () => {
     // Load saved preferences from localStorage
-    document.getElementById("outputFileName").value = localStorage.getItem("outputFileName") || "";
+    // document.getElementById("outputFileName").value = localStorage.getItem("outputFileName") || "";
     document.getElementById("connections").value = localStorage.getItem("connections") || "4";
     document.getElementById("headers").value = localStorage.getItem("headers") || "";
 
@@ -289,7 +289,7 @@ document.getElementById("urlForm").addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const url = document.getElementById("videoUrl").value;
-    const outputFileName = document.getElementById("outputFileName").value;
+    // const outputFileName = document.getElementById("outputFileName").value;
     const connections = document.getElementById("connections").value;
     const headers = document.getElementById("headers").value;
 
@@ -346,6 +346,7 @@ document.getElementById("urlForm").addEventListener("submit", async (e) => {
 
             // Attach click listener with closure capturing src & full data
             button.addEventListener("click", () => {
+                const outputFileName = document.getElementById("outputFileName").value;
                 downloadSource(url, src.label, data, button, outputFileName);
             });
 
