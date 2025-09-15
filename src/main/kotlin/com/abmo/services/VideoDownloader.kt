@@ -1,5 +1,6 @@
 package com.abmo.services
 
+import com.abmo.api.model.DownloadProgress
 import com.abmo.common.Constants.abyssDefaultHeaders
 import com.abmo.common.Logger
 import com.abmo.crypto.CryptoHelper
@@ -95,15 +96,14 @@ class VideoDownloader: KoinComponent {
                         lastUpdateTime
                     )
 
-                    val progress = mapOf(
-                        "downloadedSegments" to downloadedSegments.get(),
-                        "totalSegments" to totalSegments,
-                        "downloadedBytes" to totalBytesDownloaded.get(),
-                        "mediaSize" to mediaSize,
-                        "percent" to (downloadedSegments.get().toDouble() / totalSegments * 100.0),
-                        "startTime" to startTime
-                    )
-                    ProgressManager.emitProgress(progress)
+                    ProgressManager.emitProgress(DownloadProgress(
+                        downloadedSegments = downloadedSegments.get(),
+                        totalSegments = totalSegments,
+                        downloadedBytes = totalBytesDownloaded.get(),
+                        mediaSize = mediaSize,
+                        percent = (downloadedSegments.get().toDouble() / totalSegments * 100.0),
+                        startTime = startTime
+                    ))
 
                     delay(1000)
                 }
@@ -162,10 +162,10 @@ class VideoDownloader: KoinComponent {
 
         Logger.success("Segments merged successfully.")
 
-        ProgressManager.emitProgress(mapOf(
-            "percent" to 100.0,
-            "status" to "completed",
-            "message" to "Download completed successfully!"
+        ProgressManager.emitProgress(DownloadProgress(
+            percent = 100.0,
+            status = "completed",
+            message = "Download completed successfully!"
         ))
 
         if (segmentFolderPath.exists() && segmentFolderPath.isDirectory) {

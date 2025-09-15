@@ -1,5 +1,6 @@
 package com.abmo.api.routes
 
+import com.abmo.api.model.DownloadProgress
 import com.abmo.api.model.DownloadRequest
 import com.abmo.api.model.Endpoint
 import com.abmo.model.Config
@@ -38,14 +39,14 @@ fun Route.downloadVideo(videoDownloader: VideoDownloader) {
 
 
         // Emit initial progress immediately
-        ProgressManager.emitProgress(mapOf(
-            "status" to "starting",
-            "message" to "Initializing download...",
-            "downloadedSegments" to 0,
-            "totalSegments" to 0,
-            "downloadedBytes" to 0,
-            "mediaSize" to 0,
-            "percent" to 0.0
+        ProgressManager.emitProgress(DownloadProgress(
+            status = "starting",
+            message = "Initializing download...",
+            downloadedSegments = 0,
+            totalSegments = 0,
+            downloadedBytes = 0,
+            mediaSize = 0,
+            percent = 0.0
         ))
 
         // Launch download asynchronously DON'T WAIT FOR IT
@@ -57,10 +58,10 @@ fun Route.downloadVideo(videoDownloader: VideoDownloader) {
                 )
             } catch (e: Exception) {
                 // Handle download errors through ProgressManager
-                ProgressManager.emitProgress(mapOf(
-                    "status" to "error",
-                    "error" to e.message!!,
-                    "message" to "Download failed: ${e.message}"
+                ProgressManager.emitProgress(DownloadProgress(
+                    status = "error",
+                    error = e.message,
+                    message = "Download failed: ${e.message}"
                 ))
             }
         }

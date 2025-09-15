@@ -9,7 +9,7 @@ import io.ktor.websocket.*
 
 fun Route.getCurrentDownloadProgress() {
     webSocket(Endpoint.GetCurrentProgress.path) {
-        ProgressManager.getFlow().collect { progress ->
+        ProgressManager.getProgressFlow().collect { progress ->
             send(Frame.Text(progress.toJson()))
         }
     }
