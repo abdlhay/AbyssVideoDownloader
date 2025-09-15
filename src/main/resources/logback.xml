@@ -1,0 +1,16 @@
+<configuration>
+    <!-- Turn off Netty and Ktor engine logs -->
+    <logger name="io.netty" level="OFF"/>
+    <logger name="io.ktor.server.engine" level="OFF"/>
+
+    <!-- Only show your custom logs -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+</configuration>
