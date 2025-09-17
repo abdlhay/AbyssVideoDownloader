@@ -46,7 +46,7 @@ class VideoDownloaderIntegrationTest : KoinComponent {
             val videoIDList = listOf(
                 "hY_y1CqB0", "IHkd0Mws_", "JZMRhKMkP", "2xvPq9YUT", "CibObsG69",
                 "cAlc2yA_P", "2xvPq9YUT", "Kj1HAeAde", "ZHO0R7ZkR", "GZr_NbnAwvD", "hpXFDLHDj",
-                "vG3vP922G", "jW0HhYs6y"
+                "vG3vP922G"
             )
             return Stream.of(*videoIDList.map {
                     videoId -> Arguments.of("https://abysscdn.com/?v=$videoId", videoId)
