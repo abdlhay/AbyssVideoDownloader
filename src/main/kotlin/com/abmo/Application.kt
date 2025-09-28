@@ -34,8 +34,8 @@ class Application(private val args: Array<String>) : KoinComponent {
             }
         }
 
-        var attemptsCount: Int = 0
-        var i: Int = 0
+        var attemptsCount = 0
+        var i = 0
         while (i < videoIdsOrUrls.size) {
             val pairs = videoIdsOrUrls[i]
             val videoUrl = pairs.first
@@ -72,7 +72,6 @@ class Application(private val args: Array<String>) : KoinComponent {
                     Logger.info("video with id $videoID and resolution $mappedResolution being processed...\n")
                     try {
                         videoDownloader.downloadSegmentsInParallel(config, videoMetadata)
-                        attemptsCount = 0
                     } catch (e: Exception) {
                         if (retriesDownloadMax != null && attemptsCount < retriesDownloadMax) {
                             attemptsCount++
@@ -81,13 +80,13 @@ class Application(private val args: Array<String>) : KoinComponent {
                             continue
                         }
 
-                        attemptsCount = 0
                         Logger.error(e.message.toString())
                     }
                 }
             }
 
             i++
+            attemptsCount = 0
             if (videoIdsOrUrls.size > 1) {
                 println("-----------------------------------------$videoID--------------------------------------------------------")
             }
