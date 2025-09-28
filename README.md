@@ -124,6 +124,9 @@ To download a video, follow these steps:
 - **Connections**:  
   Use `-c <1-10>` to set concurrent connections (default: 4).
 
+- **Retries**:  
+  Use `--retry` to set the number of attempts to download a video
+
 - **Verbose Mode**:  
   Add `--verbose` for detailed output.
 
@@ -153,6 +156,11 @@ To download a video, follow these steps:
 5. **Download a video using custom headers and multiple connections**:
    ```bash
    java -jar abyss-dl.jar K8R6OOjS7 -H "Authorization: Bearer TOKEN" --header "Referer: https://example.com" -c 3 -o /path/to/my_video.mp4
+   ```
+
+6. **Download a video with retries**:
+   ```bash
+   java -jar abyss-dl.jar K8R6OOjS7 --retry 3 -o /path/to/my_video.mp4
    ```
 
 6. Download multiple videos with resolutions from a text file or inline:  
@@ -197,7 +205,7 @@ Here are the planned tasks and features for future updates:
 - [x] Integrate dependency injection
 - [ ] Improve error handling and provide more descriptive messages for common issues.
 - [x] resume logic for failed downloads.
-- [ ] Implement retry
+- [x] Implement retry
 - [x] Enhance logging with different verbosity levels (e.g., debug, info, error).
 - [ ] Add support for proxy configuration.
 - [ ] Add a graphical user interface (GUI) for easier interaction or maybe an android app

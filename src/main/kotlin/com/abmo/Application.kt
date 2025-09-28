@@ -24,6 +24,7 @@ class Application(private val args: Array<String>) : KoinComponent {
         val outputFileName = cliArguments.getOutputFileName()
         val headers = cliArguments.getHeaders()
         val numberOfConnections = cliArguments.getParallelConnections()
+        val retriesDownloadMax = cliArguments.getRetriesCount()
         val videoIdsOrUrls = cliArguments.getVideoIdsOrUrlsWithResolutions()
         Constants.VERBOSE = cliArguments.isVerboseEnabled()
 
@@ -33,7 +34,10 @@ class Application(private val args: Array<String>) : KoinComponent {
             }
         }
 
-        videoIdsOrUrls.forEach { pairs ->
+        var attemptsCount: Int = 0
+        var i: Int = 0
+        while (i < videoIdsOrUrls.size) {
+            val pairs = videoIdsOrUrls[i]
             val videoUrl = pairs.first
             val resolution = pairs.second
 
@@ -68,19 +72,25 @@ class Application(private val args: Array<String>) : KoinComponent {
                     Logger.info("video with id $videoID and resolution $mappedResolution being processed...\n")
                     try {
                         videoDownloader.downloadSegmentsInParallel(config, videoMetadata)
+                        attemptsCount = 0
                     } catch (e: Exception) {
+                        if (retriesDownloadMax != null && attemptsCount < retriesDownloadMax) {
+                            attemptsCount++
+                            Logger.warn(e.message.toString())
+                            Logger.warn("Retry attempts: $attemptsCount out of $retriesDownloadMax...")
+                            continue
+                        }
+
+                        attemptsCount = 0
                         Logger.error(e.message.toString())
                     }
                 }
             }
+
+            i++
             if (videoIdsOrUrls.size > 1) {
                 println("-----------------------------------------$videoID--------------------------------------------------------")
             }
         }
-
-
-
-
     }
-
 }

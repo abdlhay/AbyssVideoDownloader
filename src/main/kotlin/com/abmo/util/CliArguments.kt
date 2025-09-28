@@ -89,7 +89,7 @@ class CliArguments(private val args: Array<String>) {
 
         val relevantArgs = args.filterNot { arg ->
             arg.startsWith("-o") || arg.startsWith("-H") || arg.startsWith("--header") ||
-                    arg.startsWith("-c") || arg.startsWith("--connection")
+                    arg.startsWith("-c") || arg.startsWith("--connection") || arg.startsWith("--retry")
         }
 
         if (relevantArgs.isEmpty()) {
@@ -113,4 +113,29 @@ class CliArguments(private val args: Array<String>) {
         }
     }
 
+    /**
+     * Retrieves the number of download attempts from command-line arguments
+     * 
+     * @return Number of attempts to download a video.
+     *         Returns null if the argument is not provided
+     */
+    fun getRetriesCount(): Int? {
+        val retriesArgIndex = args.indexOf("--retry")
+        if (retriesArgIndex == -1)
+            return null
+
+        // Validate arg
+        if (retriesArgIndex + 1 > args.size) {
+            Logger.error("No retries count provided.")
+            exitProcess(0)
+        }
+
+        val retriesCount = args[retriesArgIndex + 1].toIntOrNull()
+        if (retriesCount == null) {
+            Logger.error("No valid retries count provided.")
+            exitProcess(0)
+        }
+
+        return retriesCount
+    }
 }
