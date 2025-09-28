@@ -131,7 +131,7 @@ class CliArguments(private val args: Array<String>) {
         }
 
         val retriesCount = args[retriesArgIndex + 1].toIntOrNull()
-        if (retriesCount == null) {
+        if (retriesCount == null || retriesCount < 1) {
             Logger.error("No valid retries count provided.")
             exitProcess(0)
         }

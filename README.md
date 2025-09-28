@@ -125,7 +125,7 @@ To download a video, follow these steps:
   Use `-c <1-10>` to set concurrent connections (default: 4).
 
 - **Retries**:  
-  Use `--retry` to set the number of attempts to download a video
+  Use `--retry <1-n>` to set the number of attempts to download a video
 
 - **Verbose Mode**:  
   Add `--verbose` for detailed output.
