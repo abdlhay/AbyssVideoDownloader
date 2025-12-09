@@ -1,10 +1,6 @@
 package com.abmo.crypto
 
-import com.abmo.common.Logger
 import com.abmo.executor.JavaScriptExecutor
-import com.abmo.model.Video
-import com.abmo.util.toObject
-import com.google.gson.JsonSyntaxException
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.nio.charset.StandardCharsets
@@ -15,69 +11,6 @@ import javax.crypto.spec.SecretKeySpec
 class CryptoHelper : KoinComponent {
 
     private val javaScriptExecutor: JavaScriptExecutor by inject()
-
-    /**
-     * Decrypts and decodes an encrypted string into a `Video` object.
-     *
-     * @param encryptedInput The encrypted input string to decode and decrypt.
-     * @return The decoded `Video` object, or null if decryption or deserialization fails.
-     */
-    fun decodeEncryptedString(encryptedInput: String?): Video? {
-        Logger.debug("Starting decryption and decoding of the encrypted response.")
-        if (encryptedInput != null) {
-            var sanitizedInput = encryptedInput
-            val decryptionKey = "RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/="
-            var decodedString = ""
-            var index = 0
-            sanitizedInput = sanitizedInput.replace(Regex("[^A-Za-z0-9+/=]"), "")
-            while (index < sanitizedInput.length) {
-                val firstCharValue =
-                    (decryptionKey.indexOf(sanitizedInput[index++]) shl 2) or (decryptionKey.indexOf(sanitizedInput[index])
-                        .shr(4))
-                val secondCharValue = decryptionKey.indexOf(sanitizedInput[index++])
-                val thirdCharValue =
-                    ((0xf and secondCharValue) shl 4) or (decryptionKey.indexOf(sanitizedInput[index]).shr(2))
-                val fourthCharCode = decryptionKey.indexOf(sanitizedInput[index++])
-                val fifthCharCode = ((0x3 and fourthCharCode) shl 6) or (decryptionKey.indexOf(sanitizedInput[index++]))
-                decodedString += firstCharValue.toChar()
-                if (fourthCharCode != 0x40) decodedString += thirdCharValue.toChar()
-                if (fifthCharCode != 0x40) decodedString += fifthCharCode.toChar()
-            }
-            Logger.debug("Decryption successful. Decrypted data (truncated): ${decodedString.take(100)}...")
-            return try {
-                Logger.debug("Deserializing JSON string to Video object.")
-                decodeUtf8String(decodedString).toObject<Video>()
-            } catch (e: JsonSyntaxException) {
-                Logger.error("Failed to deserialize JSON to Video object: ${e.message}")
-                null
-            }
-        } else {
-            return null
-        }
-    }
-
-    private fun decodeUtf8String(input: String): String {
-        var result = ""
-        var i = 0
-        while (i < input.length) {
-            val charCode = input[i].code
-            if (charCode < 0x80) {
-                result += charCode.toChar()
-                i++
-            } else if (charCode in 0xc0..0xdf) {
-                val nextCharCode = input[i + 1].code
-                result += (((charCode and 0x1f) shl 6) or (nextCharCode and 0x3f)).toChar()
-                i += 2
-            } else {
-                val nextCode = input[i + 1].code
-                val thirdCharCode = input[i + 2].code
-                result += (((charCode and 0xf) shl 12) or ((nextCode and 0x3f) shl 6) or (thirdCharCode and 0x3f)).toChar()
-                i += 3
-            }
-        }
-        return result
-    }
-
 
     private fun initCipher(mode: Int, key: String): Cipher {
         val keyBytes = key.toByteArray(StandardCharsets.UTF_8)
@@ -115,6 +48,24 @@ class CryptoHelper : KoinComponent {
     fun decryptAESCTR(data: ByteArray, key: String): ByteArray {
         val cipher = initCipher(Cipher.DECRYPT_MODE, key)
         return cipher.doFinal(data)
+    }
+
+    fun decryptString(cipherText: String, key: ByteArray): String {
+        val decryptedBytes = decryptStringToBytes(cipherText, key)
+        return String(decryptedBytes, Charsets.UTF_8)
+    }
+
+    private fun decryptStringToBytes(str: String, key: ByteArray): ByteArray {
+        val keySpec = SecretKeySpec(key, "AES")
+        val counter = key.copyOfRange(0, 16)
+        val bytes = ByteArray(str.length) { index ->
+            str[index].code.toByte()
+        }
+
+        val cipher = Cipher.getInstance("AES/CTR/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, IvParameterSpec(counter))
+
+        return cipher.doFinal(bytes)
     }
 
     fun getKey(value: Any?): String {
