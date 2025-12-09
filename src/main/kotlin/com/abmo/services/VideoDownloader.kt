@@ -1,13 +1,15 @@
 package com.abmo.services
 
-import com.abmo.common.Constants.abyssDefaultHeaders
 import com.abmo.common.Logger
 import com.abmo.crypto.CryptoHelper
-import com.abmo.executor.JavaScriptExecutor
-import com.abmo.model.*
-import com.abmo.model.dto.VideoDto
-import com.abmo.model.dto.toVideo
-import com.abmo.util.*
+import com.abmo.model.Config
+import com.abmo.model.SimpleVideo
+import com.abmo.model.Datas
+import com.abmo.model.video.Mp4
+import com.abmo.model.video.Video
+import com.abmo.model.video.toSimpleVideo
+import com.abmo.util.displayProgressBar
+import com.abmo.util.toObject
 import com.mashape.unirest.http.Unirest
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -19,63 +21,56 @@ import org.jsoup.Jsoup
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
+import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 class VideoDownloader: KoinComponent {
 
     private val cryptoHelper: CryptoHelper by inject()
-    private val javaScriptExecutor: JavaScriptExecutor by inject()
-    private val abyssCodeExtractor: AbyssJsCodeExtractor by inject()
     private val httpClientManager: HttpClientManager by inject()
 
+    companion object {
+        private const val FRAGMENT_SIZE_IN_BYTES = 2097152L
+    }
+
     /**
-     * Downloads video segments in parallel, decrypts the header of each segment, and merges them into a single MP4 file.
+     * Downloads video segments in parallel and merges them into a single MP4 file.
      * This function uses coroutines for concurrent downloading with a limit on the number of concurrent downloads.
-     * The header of each segment is decrypted only once (on the first chunk) using `isHeader` to distinguish it.
      *
      * @param config The configuration containing settings like output file path and connection limits, resolution.
      * @param videoMetadata The metadata of the video, used to generate segment data and the decryption key.
      * @throws Exception If there are errors during the download or file operations.
      */
-    suspend fun downloadSegmentsInParallel(config: Config, videoMetadata: Video?) {
+    suspend fun downloadSegmentsInParallel(config: Config, videoMetadata: Mp4?) {
         val simpleVideo = videoMetadata?.toSimpleVideo(config.resolution)
-        val segmentBodies = generateSegmentsBody(simpleVideo)
-        val segmentUrl = getSegmentUrl(videoMetadata, config.resolution)
-        val decryptionKey = cryptoHelper.getKey(simpleVideo?.size)
+        val segmentTokens = generateSegmentTokens(simpleVideo)
 
+        val tempDir = initializeDownloadTempDir(config, simpleVideo, segmentTokens.size)
 
-        val tempDir = initializeDownloadTempDir(config, simpleVideo, segmentBodies.size)
-
-        val segmentsToDownload = segmentBodies.filter { (index, _) -> index in tempDir.second }.ifEmpty {
-            segmentBodies
+        val segmentsToDownload = segmentTokens.filter { (index, _) -> index in tempDir.second }.ifEmpty {
+            segmentTokens
         }
 
         // reference: https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.sync/-semaphore/
         // used to limit the number of concurrent coroutines executing the download tasks.
         val semaphore = Semaphore(config.connections)
         val totalSegments = segmentsToDownload.size
-        val mediaSize = segmentsToDownload.size * 2097152L
+        val mediaSize = segmentsToDownload.size * FRAGMENT_SIZE_IN_BYTES
         val downloadedSegments = AtomicInteger(0)
         val totalBytesDownloaded = AtomicLong(0L)
 
         val startTime = System.currentTimeMillis()
 
         coroutineScope {
-            val downloadJobs = segmentsToDownload.entries.mapIndexed { _, segmentBody ->
+            val downloadJobs = segmentsToDownload.entries.mapIndexed { _, segmentToken ->
+                val segmentUrl = "${simpleVideo?.url}/sora/${simpleVideo?.size}/${segmentToken.value}"
                 async(Dispatchers.IO) {
-                    val index = segmentBody.key
+                    val index = segmentToken.key
                     semaphore.withPermit {
-                        var isHeader = true
-                        requestSegment(segmentUrl, segmentBody.value.toJson(), index).collect { chunk ->
-                            val array = if (isHeader) {
-                                isHeader = false
-                                cryptoHelper.decryptAESCTR(chunk, decryptionKey)
-                            } else {
-                                chunk
-                            }
-                            File(tempDir.first, "segment_$index").appendBytes(array)
-                            totalBytesDownloaded.addAndGet(array.size.toLong())
+                        requestSegment(segmentUrl, segmentToken.value, index).collect { chunk ->
+                            File(tempDir.first, "segment_$index").appendBytes(chunk)
+                            totalBytesDownloaded.addAndGet(chunk.size.toLong())
                         }
                     }
                     downloadedSegments.incrementAndGet()
@@ -106,39 +101,6 @@ class VideoDownloader: KoinComponent {
         config.outputFile?.let { mergeSegmentsIntoMp4File(tempDir.first, it) }
 
     }
-
-
-    @Deprecated("Use downloadSegmentsInParallel instead.",
-        ReplaceWith("downloadSegmentsInParallel(config, videoMetadata)"))
-    suspend fun downloadVideo(config: Config, videoMetadata: Video?) {
-        var totalBytesDownloaded = 0L
-        val startTime = System.currentTimeMillis()
-        val simpleVideo = videoMetadata?.toSimpleVideo(config.resolution)
-        val segmentBodies = generateSegmentsBody(simpleVideo)
-        val segmentUrl = getSegmentUrl(videoMetadata, config.resolution)
-        val decryptionKey = cryptoHelper.getKey(simpleVideo?.size)
-
-        for (body in segmentBodies) {
-            var isFirst = true
-            requestSegment(segmentUrl, body.toJson()).collect { chunk ->
-                val array = if (isFirst) {
-                    isFirst = false
-                    cryptoHelper.decryptAESCTR(chunk, decryptionKey)
-                } else {
-                    chunk
-                }
-                config.outputFile?.appendBytes(array)
-                totalBytesDownloaded += array.size
-                displayProgressBar(totalBytesDownloaded, simpleVideo?.size!!.toLong(), startTime)
-            }
-        }
-        val endTime = System.currentTimeMillis()
-        val duration = (endTime - startTime).toReadableTime()
-        println("\nDownload took: $duration")
-        println("\nDownload complete")
-    }
-
-
 
     private fun mergeSegmentsIntoMp4File(segmentFolderPath: File, output: File) {
         val segmentFiles  = segmentFolderPath.listFiles { file -> file.name.startsWith("segment_") }
@@ -177,50 +139,48 @@ class VideoDownloader: KoinComponent {
      * @param headers A map of headers to include in the request.
      * @return The decoded video metadata, or null if the extraction or decoding fails.
      */
-    fun getVideoMetaData(url: String, headers: Map<String, String?>?): Video? {
+    fun getVideoMetaData(url: String, headers: Map<String, String?>?): Mp4? {
         val response = httpClientManager.makeHttpRequest(url, headers)
         val encryptedData = response?.body ?: return null
-        val videoData = extractEncryptedVideoMetaData(encryptedData)?.toObject<VideoDto>()
-        val decodedSources = cryptoHelper.decodeEncryptedString(videoData?.sourcesEncrypted)?.sources?.distinct()
-        return videoData?.toVideo(decodedSources)
+        val videoData = parseEncryptedMp4MetadataFromHtml(encryptedData)
+        return videoData
 
     }
 
 
-    private fun extractEncryptedVideoMetaData(html: String): String? {
+    private fun parseEncryptedMp4MetadataFromHtml(html: String): Mp4? {
        val jsCode = Jsoup.parse(html)
            .select("script")
-           .find { it.html().contains("atob") }
+           .find { it.html().contains("datas") }
            ?.html()
 
+
         if (jsCode == null) {
-            Logger.debug("No encrypted video metadata found in the provided HTML.", true)
+            Logger.error("No encoded media metadata found in the provided HTML.")
+            return null
+        }
+        val datasRegex = Regex("""const\s+datas\s*=\s*"([^"]*)"""")
+        val datas = datasRegex.find(jsCode)?.groups?.get(1)?.value
+        val decodedDatas = String(Base64.getDecoder().decode(datas), Charsets.ISO_8859_1)
+        val mediaMetadata = decodedDatas.toObject<Datas>()
+        val encryptedMediaMetadata = mediaMetadata.media
+
+        if (encryptedMediaMetadata == null) {
+            Logger.error("failed to get encrypted media")
             return null
         }
 
-        val javascriptCodeToExecute = abyssCodeExtractor.getCompleteJsCode(jsCode)
+        val mediaKey = "${mediaMetadata.user_id}:${mediaMetadata.slug}:${mediaMetadata.md5_id}"
+        val decryptionKey = cryptoHelper.getKey(mediaKey).toByteArray()
+        val mediaSources = cryptoHelper.decryptString(encryptedMediaMetadata, decryptionKey)
+            .toObject<Video>()
+            .mp4?.copy(
+                slug = mediaMetadata.slug,
+                md5_id = mediaMetadata.md5_id
+            )
 
-
-        val result =  javaScriptExecutor.runJavaScriptCode(javascriptCode = javascriptCodeToExecute)
-        return result
+        return mediaSources
     }
-
-    private fun getSegmentUrl(video: Video?, res: String): String {
-        val simpleVideo = video?.toSimpleVideo(res)
-        // don't know what is this 'isBal' boolean parameter for
-        val url = "https://${video?.domain}/tunnel/list?slug=${simpleVideo?.slug}" +
-                "&size=${simpleVideo?.size}&label=${simpleVideo?.label}&md5_id=${simpleVideo?.md5_id}&isBal=1"
-
-        val response = Unirest.get(url)
-            .headers(abyssDefaultHeaders)
-            .asString().body
-
-        val urlList =  response.toObject<List<String>>().map { it + "/${video?.id}" }
-
-        return urlList.getOrNull(2) ?: urlList[0]
-//        return "https://${video?.domain}/${video?.id}"
-    }
-
 
     private fun initializeDownloadTempDir(
         config: Config,
@@ -238,7 +198,7 @@ class VideoDownloader: KoinComponent {
                 if (
                     file.isFile &&
                     file.name.matches(Regex("segment_\\d+")) &&
-                    file.length() < 2097152) {
+                    file.length() < FRAGMENT_SIZE_IN_BYTES) {
                     file.delete()
                 }
                 file.isFile && file.name.matches(Regex("segment_\\d+"))
@@ -259,7 +219,7 @@ class VideoDownloader: KoinComponent {
         return tempFolder to emptyList()
     }
 
-    private fun generateRanges(size: Long, step: Long = 2097152): List<LongRange> {
+    private fun generateRanges(size: Long, step: Long = FRAGMENT_SIZE_IN_BYTES): List<LongRange> {
         val ranges = mutableListOf<LongRange>()
 
         // if the size is less than or equal to step size return a single range
@@ -279,40 +239,43 @@ class VideoDownloader: KoinComponent {
     }
 
 
-    private fun generateSegmentsBody(simpleVideo: SimpleVideo?): Map<Int, String> {
-        Logger.debug("Generating segment POST request body and encrypting the data.")
+    private fun generateSegmentTokens(simpleVideo: SimpleVideo?): Map<Int, String> {
+        Logger.debug("Generating segment request tokens.")
         val fragmentList = mutableMapOf<Int, String>()
-        val encryptionKey = cryptoHelper.getKey(simpleVideo?.slug)
+        val encryptionKey = cryptoHelper.getKey(simpleVideo?.size)
         if (simpleVideo?.size != null) {
             val ranges = generateRanges(simpleVideo.size)
-            ranges.forEachIndexed { index, range ->
-                val body = simpleVideo.copy(
-                    range = Range(range.first, range.last)
-                )
-                val encryptedBody = cryptoHelper.encryptAESCTR(body.toJson(), encryptionKey)
-                fragmentList[index] = encryptedBody
+            ranges.forEachIndexed { index, _ ->
+                val path = "/mp4/${simpleVideo.md5_id}/${simpleVideo.resId}/${simpleVideo.size}/$FRAGMENT_SIZE_IN_BYTES/$index"
+                val encryptedBody = cryptoHelper.encryptAESCTR(path, encryptionKey)
+                fragmentList[index] = doubleEncodeToBase64(encryptedBody)
             }
-            Logger.debug("${fragmentList.size} request body generated")
+            Logger.debug("${fragmentList.size} request token generated")
             return fragmentList
         }
         return emptyMap()
     }
 
+    private fun doubleEncodeToBase64(input: String): String {
+        val first = Base64.getEncoder()
+            .encodeToString(input.toByteArray(Charsets.ISO_8859_1))
+            .replace("=", "")
 
-    private suspend fun requestSegment(url: String, body: String, index: Int? = null): Flow<ByteArray> = flow {
-//        println("\n")
-        Logger.debug("[$index] Starting HTTP POST request to $url with body length: ${body.length}. Body (truncated): \"...${body.takeLast(30)}")
-        val response = Unirest.post(url)
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36")
-            .header("Content-Type", "application/json")
-            .headers(abyssDefaultHeaders)
-            .body("""{"hash":$body}""")
+        return Base64.getEncoder()
+            .encodeToString(first.toByteArray())
+            .replace("=", "")
+    }
+
+
+    private suspend fun requestSegment(url: String, token: String, index: Int? = null): Flow<ByteArray> = flow {
+        Logger.debug("[$index] Starting request to $url with token token: $token")
+        val response = Unirest.get(url)
+            .header("Referer", "https://abysscdn.com/")
             .asBinary()
 
         val rawBody = response.rawBody
         val responseCode = response.status
 
-//        println("\n")
         Logger.debug("[$index] Received response with status $responseCode\n", responseCode !in 200..299)
 
         val buffer = ByteArray(65536)
