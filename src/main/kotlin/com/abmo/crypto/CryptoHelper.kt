@@ -1,8 +1,6 @@
 package com.abmo.crypto
 
-import com.abmo.executor.JavaScriptExecutor
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import javax.crypto.Cipher
@@ -10,8 +8,6 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 class CryptoHelper : KoinComponent {
-
-    private val javaScriptExecutor: JavaScriptExecutor by inject()
 
     private fun initCipher(mode: Int, key: String): Cipher {
         val keyBytes = key.toByteArray(StandardCharsets.UTF_8)
