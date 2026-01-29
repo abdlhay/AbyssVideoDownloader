@@ -1,6 +1,5 @@
 package com.abmo.crypto
 
-import com.abmo.common.Logger
 import com.abmo.executor.JavaScriptExecutor
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
