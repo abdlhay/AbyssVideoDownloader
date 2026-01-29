@@ -1,9 +1,11 @@
 package com.abmo.crypto
 
+import com.abmo.common.Logger
 import com.abmo.executor.JavaScriptExecutor
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -69,11 +71,10 @@ class CryptoHelper : KoinComponent {
     }
 
     fun getKey(value: Any?): String {
-        return javaScriptExecutor.runJavaScriptCode(
-            javascriptFileName = "keyGenerator.js",
-            identifier = "generateKey",
-            arguments = arrayOf(value)
-        )
+        val input = value?.toString() ?: ""
+        val md = MessageDigest.getInstance("MD5")
+        val digest = md.digest(input.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
 }
