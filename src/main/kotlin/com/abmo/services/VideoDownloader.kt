@@ -242,13 +242,25 @@ class VideoDownloader: KoinComponent {
     private fun generateSegmentTokens(simpleVideo: SimpleVideo?): Map<Int, String> {
         Logger.debug("Generating segment request tokens.")
         val fragmentList = mutableMapOf<Int, String>()
+        // --- TAMBAHKAN LOG DI SINI ---
+        Logger.debug("=== DEBUG ABYSS ===")
+        Logger.debug("Raw Size Value: '${simpleVideo.size}'")
+        Logger.debug("Data Type: ${simpleVideo.size?.javaClass?.name}")
+        
         val encryptionKey = cryptoHelper.getKey(simpleVideo?.size)
+        
+        Logger.debug("encryptionKey: ${encryptionKey}")
+        
         if (simpleVideo?.size != null) {
             val ranges = generateRanges(simpleVideo.size)
             ranges.forEachIndexed { index, _ ->
                 val path = "/mp4/${simpleVideo.md5_id}/${simpleVideo.resId}/${simpleVideo.size}/$FRAGMENT_SIZE_IN_BYTES/$index"
                 val encryptedBody = cryptoHelper.encryptAESCTR(path, encryptionKey)
+                
+                Logger.debug("encryptedBody: ${encryptedBody}")
+                
                 fragmentList[index] = doubleEncodeToBase64(encryptedBody)
+                Logger.debug("fragmentList ${index}: ${fragmentList[index]}")
             }
             Logger.debug("${fragmentList.size} request token generated")
             return fragmentList
