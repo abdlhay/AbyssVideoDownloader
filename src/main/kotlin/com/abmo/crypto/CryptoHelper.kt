@@ -66,9 +66,23 @@ class CryptoHelper : KoinComponent {
     }
 
     fun getKey(value: Any?): String {
-        val input = value?.toString() ?: ""
+        val bytes = when (value) {
+            is Number -> {
+                value.toString().map { char ->
+                    if (char.isDigit()) {
+                        char.digitToInt().toByte()
+                    } else {
+                        char.code.toByte()
+                    }
+                }.toByteArray()
+            }
+            else -> {
+                value?.toString()?.toByteArray(Charsets.UTF_8) ?: byteArrayOf()
+            }
+        }
+
         val md = MessageDigest.getInstance("MD5")
-        val digest = md.digest(input.toByteArray(Charsets.UTF_8))
+        val digest = md.digest(bytes)
         return digest.joinToString("") { "%02x".format(it) }
     }
 
