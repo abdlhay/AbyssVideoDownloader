@@ -24,6 +24,7 @@ class Application(private val args: Array<String>) : KoinComponent {
         val outputFileName = cliArguments.getOutputFileName()
         val headers = cliArguments.getHeaders()
         val numberOfConnections = cliArguments.getParallelConnections()
+        val retriesDownloadMax = cliArguments.getRetriesCount()
         val videoIdsOrUrls = cliArguments.getVideoIdsOrUrlsWithResolutions()
         Constants.VERBOSE = cliArguments.isVerboseEnabled()
 
@@ -33,7 +34,10 @@ class Application(private val args: Array<String>) : KoinComponent {
             }
         }
 
-        videoIdsOrUrls.forEach { pairs ->
+        var attemptsCount = 0
+        var i = 0
+        while (i < videoIdsOrUrls.size) {
+            val pairs = videoIdsOrUrls[i]
             val videoUrl = pairs.first
             val resolution = pairs.second
 
@@ -69,18 +73,23 @@ class Application(private val args: Array<String>) : KoinComponent {
                     try {
                         videoDownloader.downloadSegmentsInParallel(config, videoMetadata)
                     } catch (e: Exception) {
+                        if (retriesDownloadMax != null && attemptsCount < retriesDownloadMax) {
+                            attemptsCount++
+                            Logger.warn(e.message.toString())
+                            Logger.warn("Retry attempts: $attemptsCount out of $retriesDownloadMax...")
+                            continue
+                        }
+
                         Logger.error(e.message.toString())
                     }
                 }
             }
+
+            i++
+            attemptsCount = 0
             if (videoIdsOrUrls.size > 1) {
                 println("-----------------------------------------$videoID--------------------------------------------------------")
             }
         }
-
-
-
-
     }
-
 }
